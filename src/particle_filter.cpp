@@ -104,7 +104,7 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 	    else
 	    {	        	        
 	        particles[i].x += (velocity/yaw_rate) * (sin(particles[i].theta + yaw_rate*delta_t) - sin(particles[i].theta));
-	        particles[i].y += (velocity/yaw_rate)  *(cos(particles[i].theta) - cos(particles[i].theta + yaw_rate*delta_t));
+	        particles[i].y += (velocity/yaw_rate)  * (cos(particles[i].theta) - cos(particles[i].theta + yaw_rate*delta_t));
 	        particles[i].theta += yaw_rate*delta_t;
 	        
 	    } //end if
@@ -227,6 +227,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	
 	for(int i=0; i<particles.size(); i++)
 	{
+	double prob_w  = 1;
 	    obs_t.clear();
 	    
 	    x_p = particles[i].x;
@@ -260,7 +261,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	    {        
 	        double dist_part_land = dist(map_pred[d].x, map_pred[d].y, particles[i].x, particles[i].y);	        
 	        
-	        //if the distance in greate, I delete that landmark from the vector
+	        //if the distance in in sensor range, I add that landmark to the vector
 	        if(dist_part_land < sensor_range)
 	        {
 	            //cout << " RANGE " << dist_part_land << endl;
@@ -271,9 +272,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	
 	   
 	    //Perform dataAssociation for that particle
-	    this -> dataAssociation(map_pred_filt, obs_t);
-	    
-	    //cout << " MAP SIZE: " << map_pred_filt.size() << endl;
+	    this -> dataAssociation(map_pred_filt, obs_t);	    
 	    
 	    //Now that I have the data association, I have to do the weight probabilities...
 	    
@@ -306,13 +305,12 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	        //cout << "EXP: " << exp(-exponent) << endl;
 	        //cout << "NORM: " << gauss_norm << endl;
 
-	        double prob_w = gauss_norm * exp(-exponent);
-	        
-	        particles[i].weight *= prob_w;
-	        weights[i] = particles[i].weight;
+	       prob_w *= gauss_norm * exp(-exponent);
+
 	    
 	    } //end of o observations
-	    
+	    	       particles[i].weight = prob_w;
+	       weights[i] = particles[i].weight;
 	    //cout << " PARTICLE: " << particles[i].id << " WEIGHT: " << weights[i] << " " << particles[i].weight << endl;
 	    
 	} //end for i particles
