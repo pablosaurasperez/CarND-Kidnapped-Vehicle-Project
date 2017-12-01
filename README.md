@@ -1,4 +1,4 @@
-# Kidnaepped Vehicle Project 
+# Kidnapped Vehicle Project 
 By Pablo Sauras Perez
 
 ## Submission code location
