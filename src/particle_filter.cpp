@@ -32,16 +32,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	double std_y = std[1];
 	double std_theta = std[2];
 	
-	//Create Gaussian particles based on first position
-	//Gaussian for x
-	//normal_distribution<double> dist_x(x, std_x);
-	
-	//Gaussian for y
-	//normal_distribution<double> dist_y(y, std_y);
-	
-	//Gaussian for theta
-	//normal_distribution<double> dist_theta(theta, std_theta);
-	
+	//Create Gaussian particles based on first position	
 	//Gaussian for x
 	normal_distribution<double> dist_x(x, std_x);
 	
@@ -81,16 +72,6 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 	double std_x = std_pos[0];
 	double std_y = std_pos[1];
 	double std_theta = std_pos[2];
-	
-	//Gaussian for x
-	//normal_distribution<double> dist_x(0, std_x);
-	
-	//Gaussian for y
-	//normal_distribution<double> dist_y(0, std_y);
-	
-	//Gaussian for theta
-	//normal_distribution<double> dist_theta(0, std_theta);
-		
 	
 	//Prediction next time step
 	for(int i=0; i<particles.size(); i++)
@@ -197,9 +178,6 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//vector of transformed observations
 	std::vector<LandmarkObs> obs_t;
 	
-	//convert map landmarks to landmarks
-	std::vector<LandmarkObs> map_pred;
-	
 	//filtered map landmarks (those that are within the sensor range)
 	std::vector<LandmarkObs> map_pred_filt;
 	
@@ -209,25 +187,10 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//normalization term
 	double gauss_norm = (1/(2 * M_PI * sig_x * sig_y));
 	
-	
-	for(int m=0; m<map_landmarks.landmark_list.size(); m++)
-	{
-	    Map::single_landmark_s landmark_map = map_landmarks.landmark_list[m];
-	    LandmarkObs landmark_pred;
-	    
-	    landmark_pred.id = landmark_map.id_i;
-	    landmark_pred.x = landmark_map.x_f;
-	    landmark_pred.y = landmark_map.y_f;
-	    
-	    //cout << landmark_pred.id << " : " << landmark_pred.x << " :  " << landmark_pred.y << endl;
-	    
-	    map_pred.push_back(landmark_pred);
-
-	} //end for m map landmarks
-	
+		
 	for(int i=0; i<particles.size(); i++)
 	{
-	double prob_w  = 1;
+	    double prob_w  = 1;
 	    obs_t.clear();
 	    
 	    x_p = particles[i].x;
@@ -241,7 +204,6 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	        
 	        x_c = observations[j].x;
 	        y_c = observations[j].y;
-	        
 	          
 	        //convert to map coordinates
 	        x_m = x_p + (cos(theta_p) * x_c) - (sin(theta_p) * y_c);
@@ -257,15 +219,14 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	    
 	    //Just compare with map landmarks in the sensor range
 	    map_pred_filt.clear();
-	    for(int d = 0; d< map_pred.size(); d++)
+	    for(int d = 0; d< map_landmarks.landmark_list.size(); d++)
 	    {        
-	        double dist_part_land = dist(map_pred[d].x, map_pred[d].y, particles[i].x, particles[i].y);	        
+	        double dist_part_land = dist(map_landmarks.landmark_list[d].x_f, map_landmarks.landmark_list[d].y_f, particles[i].x, particles[i].y);	        
 	        
 	        //if the distance in in sensor range, I add that landmark to the vector
 	        if(dist_part_land < sensor_range)
-	        {
-	            //cout << " RANGE " << dist_part_land << endl;
-	            map_pred_filt.push_back(map_pred[d]); 	
+	        {	            
+	            map_pred_filt.push_back(LandmarkObs{map_landmarks.landmark_list[d].id_i, map_landmarks.landmark_list[d].x_f, map_landmarks.landmark_list[d].y_f}); 	
 	        }    //end if
 	        
 	     }   //end for d map_pred
@@ -301,17 +262,12 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	        
 	        //exponent
 	        double exponent = (pow((x_o - mu_x),2))/(2 * pow(sig_x,2)) + (pow((y_o - mu_y),2))/(2 * pow(sig_y,2));
-	        
-	        //cout << "EXP: " << exp(-exponent) << endl;
-	        //cout << "NORM: " << gauss_norm << endl;
+	        prob_w *= gauss_norm * exp(-exponent);
 
-	       prob_w *= gauss_norm * exp(-exponent);
-
-	    
 	    } //end of o observations
-	    	       particles[i].weight = prob_w;
-	       weights[i] = particles[i].weight;
-	    //cout << " PARTICLE: " << particles[i].id << " WEIGHT: " << weights[i] << " " << particles[i].weight << endl;
+	       
+	    particles[i].weight = prob_w;
+	    weights[i] = particles[i].weight;
 	    
 	} //end for i particles
 	
@@ -321,27 +277,34 @@ void ParticleFilter::resample() {
 	// TODO: Resample particles with replacement with probability proportional to their weight. 
 	// NOTE: You may find std::discrete_distribution helpful here.
 	//   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
-	
-	//vector<Particle> new_particles;
-	//vector<double> weights;
-	//std::discrete_distribution<int> ind();
-	// Vector for new particles
-	
-	std::random_device rd_wts;
-	std::mt19937 generator_wts(rd_wts());
-
-
-	// Creates a discrete distribution for weight.
-	std::discrete_distribution<int> distribution_wts(weights.begin(), weights.end());
-	std::vector<Particle> resampled_particles;
-
-	// Resample
-	for(int i=0;i<num_particles;i++){
-		Particle particles_i = particles[distribution_wts(generator_wts)];
-		resampled_particles.push_back(particles_i);
-	}
-	particles = resampled_particles;
   
+  //Resampling wheel method
+  vector<Particle> new_particles;
+  default_random_engine gen;
+ // std::discrete_distribution<int> index(weights.begin(), weights.end());
+  std::default_random_engine generator;
+  std::uniform_real_distribution<double> index_dist(0, particles.size());
+  auto index = index_dist(generator);
+  double beta = 0.0;
+  double w_max = *std::max_element(weights.begin(), weights.end());
+
+  
+  for(int i=0; i<particles.size(); i++)
+  {
+    std::uniform_real_distribution<double> w_rand(0.0, 2*w_max);
+    beta += w_rand(generator);
+    
+    while(weights[index]<beta)
+    {
+        beta -= weights[index];
+        index = fmod(index + 1, particles.size());
+    }   //end while
+    
+    new_particles.push_back(particles[index]);
+    
+  } //end for i particles
+  
+  particles = new_particles;
 	
 
 }
